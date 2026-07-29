@@ -104,7 +104,7 @@ export function DirectoryList({ contents, failed, loading, onChanged, onOpenFold
               <span className="size-cell" role="cell">{isFile ? formatBytes(item.record.size_bytes) : '—'}</span>
               <span className="date-cell" role="cell">{formatDate(itemDate(item))}</span>
               {isFile && user?.id === item.record.owner_id ? (
-                <FileActions file={item.record} onChanged={onChanged} user={user} />
+                <FileActions file={item.record} onChanged={onChanged} role={role ?? 'user'} user={user} />
               ) : !isFile && user && role && canManageFolder(user.id, role, item.record) ? (
                 <FolderActions folder={item.record} onChanged={onChanged} onOpen={() => onOpenFolder(item.record)} role={role} user={user} />
               ) : (
