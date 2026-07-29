@@ -222,7 +222,7 @@ export default function App() {
             <nav className="breadcrumbs" aria-label="Breadcrumb"><button onClick={() => navigate(null)} type="button">Root</button>{folderChain.map((folder) => <span key={folder.id}><span aria-hidden="true">/</span><button onClick={() => navigate(folder)} type="button">{folder.name}</button></span>)}</nav>
             <div className={canCreateFolders || canUploadFiles ? 'content-grid' : 'content-grid content-grid--single'}>
               <DirectoryList contents={contents} failed={Boolean(loadError)} loading={loading} onChanged={refresh} onOpenFolder={navigate} role={profile?.role ?? null} user={session?.user ?? null} />
-              {(canCreateFolders || canUploadFiles) && session ? <UploadPanel canCreatePrivateFolder={canCreatePrivateFolder} canCreatePublicFolder={canCreatePublicFolder} canUploadFiles={canUploadFiles} currentFolderId={currentFolderId} key={currentFolderId ?? 'root'} onChanged={refresh} user={session.user} /> : null}
+              {(canCreateFolders || canUploadFiles) && session ? <UploadPanel canCreatePrivateFolder={canCreatePrivateFolder} canCreatePublicFolder={canCreatePublicFolder} canUploadFiles={canUploadFiles} currentFolderId={currentFolderId} key={currentFolderId ?? 'root'} onChanged={refresh} role={profile?.role ?? 'user'} user={session.user} /> : null}
             </div>
             {session && currentFolder && currentFolder.owner_id !== session.user.id ? <p className="visitor-note">You are viewing another member’s public folder. Only its owner can upload files; owner/admin accounts can manage its public folder structure.</p> : null}
           </main>
