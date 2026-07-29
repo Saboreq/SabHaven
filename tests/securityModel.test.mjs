@@ -129,6 +129,10 @@ test('owner upload migration preserves the member limit and removes only the own
   assert.match(sql, /private\.user_role\(new\.owner_id\) <> 'owner'/i);
   assert.match(sql, /new\.size_bytes > 52428800/i);
   assert.match(sql, /set file_size_limit = null/i);
+  assert.match(sql, /drop policy if exists "Members upload reserved objects"/i);
+  assert.match(sql, /create policy "Members upload size-matched reserved objects"/i);
+  assert.match(sql, /metadata \? 'size'/i);
+  assert.match(sql, /file\.size_bytes = \(metadata ->> 'size'\)::bigint/i);
   assert.match(sql, /private\.current_user_role\(\) = 'owner'/i);
   assert.match(sql, /metadata \? 'size'[\s\S]*metadata ->> 'size'[\s\S]*<= 52428800/i);
 });
