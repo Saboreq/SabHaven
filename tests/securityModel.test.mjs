@@ -9,8 +9,10 @@ const folderPolicyMigrationUrl = new URL('../supabase/migrations/202607170004_fi
 const administrationMigrationUrl = new URL('../supabase/migrations/202607170005_role_aware_administration.sql', import.meta.url);
 const roleSyncMigrationUrl = new URL('../supabase/migrations/202607170006_sync_profile_roles.sql', import.meta.url);
 const hardeningMigrationUrl = new URL('../supabase/migrations/202607200007_harden_folder_visibility_and_uploads.sql', import.meta.url);
+const ownerUploadMigrationUrl = new URL('../supabase/migrations/202607290008_owner_upload_size_exemption.sql', import.meta.url);
 const functionUrl = new URL('../supabase/functions/register-with-invite/index.ts', import.meta.url);
 const folderFunctionUrl = new URL('../supabase/functions/manage-folder/index.ts', import.meta.url);
+const directoryServiceUrl = new URL('../src/services/directoryService.ts', import.meta.url);
 
 test('database migration keeps file metadata and storage behind RLS', async () => {
   const sql = await readFile(migrationUrl, 'utf8');
@@ -120,4 +122,20 @@ test('hardening migration rejects Storage uploads without matching owner metadat
   assert.match(sql, /create policy "Members upload reserved objects"/i);
   assert.match(sql, /file\.storage_path = name/i);
   assert.match(sql, /file\.owner_id = \(select auth\.uid\(\)\)/i);
+});
+
+test('owner upload migration preserves the member limit and removes only the owner cap', async () => {
+  const sql = await readFile(ownerUploadMigrationUrl, 'utf8');
+  assert.match(sql, /private\.user_role\(new\.owner_id\) <> 'owner'/i);
+  assert.match(sql, /new\.size_bytes > 52428800/i);
+  assert.match(sql, /set file_size_limit = null/i);
+  assert.match(sql, /private\.current_user_role\(\) = 'owner'/i);
+  assert.match(sql, /metadata \? 'size'[\s\S]*metadata ->> 'size'[\s\S]*<= 52428800/i);
+});
+
+test('client validation bypasses the configured limit only for the owner role', async () => {
+  const source = await readFile(directoryServiceUrl, 'utf8');
+  assert.match(source, /validateFile\(file, role\)/);
+  assert.match(source, /validateFile\(replacement, role\)/);
+  assert.match(source, /role !== 'owner' && file\.size > memberMaxUploadBytes/);
 });
