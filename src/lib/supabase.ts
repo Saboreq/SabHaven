@@ -16,4 +16,8 @@ export const supabase = isSupabaseConfigured
   : null;
 
 export const storageBucket = 'downloads';
-export const maxUploadBytes = Number(import.meta.env.VITE_MAX_UPLOAD_BYTES ?? 52_428_800);
+
+const configuredMemberUploadLimit = Number(import.meta.env.VITE_MAX_UPLOAD_BYTES ?? 52_428_800);
+export const memberMaxUploadBytes = Number.isFinite(configuredMemberUploadLimit) && configuredMemberUploadLimit > 0
+  ? configuredMemberUploadLimit
+  : 52_428_800;
