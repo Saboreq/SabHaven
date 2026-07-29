@@ -9,8 +9,9 @@ SabHaven is an invite-only file delivery application for controlled public downl
 - Public file browsing with short-lived download links
 - Invite-only accounts and role-based administration
 - Member uploads, virtual folders, replacement, and deletion
+- 50 MiB upload limit for admin/user accounts with an owner-only exemption
 - Owner-only privacy across complete folder trees
-- Server-side invitation, role, and destructive-action validation
+- Server-side invitation, role, upload-size, and destructive-action validation
 - Documented deployment, threat model, and known limitations
 
 ## Access model
@@ -57,17 +58,19 @@ See [ADR 001](docs/adr/001-supabase-file-platform.md) for the storage design, [A
 
    Database migrations and server functions are separate from a Vercel deployment.
 
-3. In **Supabase Dashboard → Authentication → Sign In / Providers**, disable **Allow new users to sign up**. Registration remains available through the invitation flow.
+3. In **Supabase Dashboard → Storage → Settings**, set the project-wide **Global file size limit** to the largest file the owner should be able to upload. The migration removes the `downloads` bucket's 50 MiB override, but it cannot bypass the project or plan limit.
 
-4. Allow the exact production browser origin:
+4. In **Supabase Dashboard → Authentication → Sign In / Providers**, disable **Allow new users to sign up**. Registration remains available through the invitation flow.
+
+5. Allow the exact production browser origin:
 
    ```powershell
    npx supabase secrets set ALLOWED_ORIGIN=https://your-site.example
    ```
 
-5. Copy `.env.example` to `.env.local` and set the project URL and publishable key. Never place a secret or service-role key in a `VITE_` variable.
+6. Copy `.env.example` to `.env.local` and set the project URL and publishable key. Never place a secret or service-role key in a `VITE_` variable.
 
-6. Install and run:
+7. Install and run:
 
    ```powershell
    npm install
@@ -99,15 +102,21 @@ Set these environment variables for Production and Preview, then redeploy:
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_PUBLISHABLE_KEY`
-- `VITE_MAX_UPLOAD_BYTES` — optional, defaults to 50 MiB
+- `VITE_MAX_UPLOAD_BYTES` — optional admin/user limit, defaults to 50 MiB; the owner role bypasses this application limit
 
 `vercel.json` routes virtual folder URLs to the single-page application.
+
+## Upload-size policy
+
+Admin and user accounts are limited to `VITE_MAX_UPLOAD_BYTES` in both the interface and the database. The owner role has no SabHaven application-level file-size cap. Owner uploads remain bounded by the Supabase project-wide Storage setting, plan limits, and the selected upload protocol.
+
+The role-aware database trigger protects new metadata rows and replacements. Storage replacement policies also inspect the uploaded object's size so a non-owner cannot bypass the limit by calling the Storage API directly.
 
 ## File lifecycle
 
 - Uploads reserve authorised metadata before an object is stored. Failed uploads remove their reservation.
 - Replacement updates the stored object and refreshes its size, MIME type, and update timestamp without changing its logical path or owner.
-- Deletion removes both the object and its metadata. Only the owner can perform either operation.
+- Deletion removes both the object and its metadata. Only the owner of that file can perform either operation.
 - Folder privacy applies to the complete descendant tree.
 - Recursive folder deletion removes stored descendants before deleting metadata.
 - The repository does not contain downloadable user files; content is stored in Supabase Storage.
@@ -126,6 +135,7 @@ npm run build
 - Private metadata is returned only to its owner.
 - Admin and owner roles do not bypass another member's private boundary.
 - Invitation validation and role assignment are server-side.
+- Upload-size permissions are role-aware and enforced beyond the browser.
 - Browser-origin restrictions complement, but do not replace, authentication and authorisation.
 - SabHaven is not end-to-end encrypted or independently audited and does not currently include malware scanning, per-user quotas, or distributed registration rate limiting.
 
