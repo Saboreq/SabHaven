@@ -3,7 +3,7 @@
 -- admin and user accounts.
 --
 -- The browser check is only a convenience. This migration keeps the rule
--- authoritative in Postgres and in the Storage UPDATE policy used by file
+-- authoritative in Postgres and in Storage policies used by upload and file
 -- replacement.
 
 do $$
@@ -68,6 +68,27 @@ for each row execute function private.enforce_role_aware_file_size();
 update storage.buckets
 set file_size_limit = null
 where id = 'downloads';
+
+-- The Storage object's actual size must match the reserved metadata row. This
+-- prevents a caller from reserving a small size_bytes value and then uploading
+-- a larger object directly through the Storage API.
+drop policy if exists "Members upload reserved objects" on storage.objects;
+create policy "Members upload size-matched reserved objects"
+on storage.objects for insert
+to authenticated
+with check (
+  bucket_id = 'downloads'
+  and (storage.foldername(name))[1] = (select auth.uid())::text
+  and metadata ? 'size'
+  and (metadata ->> 'size') ~ '^[0-9]+$'
+  and exists (
+    select 1
+    from public.files file
+    where file.storage_path = name
+      and file.owner_id = (select auth.uid())
+      and file.size_bytes = (metadata ->> 'size')::bigint
+  )
+);
 
 -- Replacements update Storage before the public.files metadata row. Enforce the
 -- member limit against the new Storage metadata as well, otherwise a direct API
