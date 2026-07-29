@@ -1,7 +1,7 @@
 import { FunctionsHttpError, type User } from '@supabase/supabase-js';
 
 import { formatBytes, sanitizeFileName } from '../lib/format';
-import { maxUploadBytes, storageBucket, supabase } from '../lib/supabase';
+import { memberMaxUploadBytes, storageBucket, supabase } from '../lib/supabase';
 import type { AppRole, DirectoryContents, FileRecord, FolderRecord, Visibility } from '../types';
 
 function client() {
@@ -104,12 +104,13 @@ export async function deleteFolder(user: User, role: AppRole, folder: FolderReco
 
 export async function uploadFile(
   user: User,
+  role: AppRole,
   folderId: string | null,
   file: File,
   visibility: Visibility,
   onProgress?: (message: string) => void
 ): Promise<void> {
-  validateFile(file);
+  validateFile(file, role);
 
   const name = sanitizeFileName(file.name);
   if (!name) throw new Error('The selected file needs a valid name.');
@@ -154,12 +155,13 @@ export async function downloadFile(file: FileRecord): Promise<void> {
 
 export async function replaceFile(
   user: User,
+  role: AppRole,
   currentFile: FileRecord,
   replacement: File,
   onProgress?: (message: string) => void
 ): Promise<void> {
   assertFileOwner(user, currentFile);
-  validateFile(replacement);
+  validateFile(replacement, role);
 
   const db = client();
   const mimeType = replacement.type || 'application/octet-stream';
@@ -227,9 +229,9 @@ function normalizeFolderName(name: string) {
   return normalizedName;
 }
 
-function validateFile(file: File) {
+function validateFile(file: File, role: AppRole) {
   if (file.size <= 0) throw new Error('The selected file is empty.');
-  if (file.size > maxUploadBytes) {
-    throw new Error(`This file is ${formatBytes(file.size)}; the upload limit is ${formatBytes(maxUploadBytes)}.`);
+  if (role !== 'owner' && file.size > memberMaxUploadBytes) {
+    throw new Error(`This file is ${formatBytes(file.size)}; the upload limit is ${formatBytes(memberMaxUploadBytes)}. Only the owner account can upload larger files.`);
   }
 }
