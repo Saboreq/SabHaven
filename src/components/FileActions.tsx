@@ -5,17 +5,18 @@ import { Download, FileText, MoreHorizontal, RefreshCw, Trash2, UploadCloud, X }
 import { formatBytes } from '../lib/format';
 import { useModalFocus } from '../lib/useModalFocus';
 import { deleteFile, downloadFile, replaceFile } from '../services/directoryService';
-import type { FileRecord } from '../types';
+import type { AppRole, FileRecord } from '../types';
 
 interface FileActionsProps {
   file: FileRecord;
   onChanged: () => Promise<void>;
+  role: AppRole;
   user: User;
 }
 
 type Operation = 'replace' | 'delete' | null;
 
-export function FileActions({ file, onChanged, user }: FileActionsProps) {
+export function FileActions({ file, onChanged, role, user }: FileActionsProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [operation, setOperation] = useState<Operation>(null);
   const [replacement, setReplacement] = useState<File | null>(null);
@@ -75,7 +76,7 @@ export function FileActions({ file, onChanged, user }: FileActionsProps) {
     setBusy(true);
     setStatus('');
     try {
-      await replaceFile(user, file, replacement, setStatus);
+      await replaceFile(user, role, file, replacement, setStatus);
       await onChanged();
       closeAfterSuccess();
     } catch (error) {
@@ -158,7 +159,7 @@ export function FileActions({ file, onChanged, user }: FileActionsProps) {
                 <label className="file-drop file-drop--dialog" htmlFor={`replacement-${file.id}`}>
                   <UploadCloud aria-hidden="true" size={22} />
                   <span>{replacement ? replacement.name : 'Choose the new file'}</span>
-                  <small>{replacement ? `${formatBytes(replacement.size)} · published as ${file.name}` : 'Filename, folder, owner, and visibility stay unchanged'}</small>
+                  <small>{replacement ? `${formatBytes(replacement.size)} · published as ${file.name}` : role === 'owner' ? 'Owner replacement: the Supabase project limit applies' : 'Filename, folder, owner, and visibility stay unchanged'}</small>
                   <input id={`replacement-${file.id}`} onChange={(event) => setReplacement(event.target.files?.[0] ?? null)} type="file" />
                 </label>
                 {status ? <p className="form-status" role="status">{status}</p> : null}
