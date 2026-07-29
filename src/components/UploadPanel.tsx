@@ -1,8 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import type { User } from '@supabase/supabase-js';
 
+import { formatBytes } from '../lib/format';
+import { memberMaxUploadBytes } from '../lib/supabase';
 import { createFolder, uploadFile } from '../services/directoryService';
-import type { Visibility } from '../types';
+import type { AppRole, Visibility } from '../types';
 
 interface UploadPanelProps {
   canCreatePrivateFolder: boolean;
@@ -10,10 +12,11 @@ interface UploadPanelProps {
   canUploadFiles: boolean;
   currentFolderId: string | null;
   onChanged: () => Promise<void>;
+  role: AppRole;
   user: User;
 }
 
-export function UploadPanel({ canCreatePrivateFolder, canCreatePublicFolder, canUploadFiles, currentFolderId, onChanged, user }: UploadPanelProps) {
+export function UploadPanel({ canCreatePrivateFolder, canCreatePublicFolder, canUploadFiles, currentFolderId, onChanged, role, user }: UploadPanelProps) {
   const [mode, setMode] = useState<'file' | 'folder'>('file');
   const [file, setFile] = useState<File | null>(null);
   const [folderName, setFolderName] = useState('');
@@ -37,7 +40,7 @@ export function UploadPanel({ canCreatePrivateFolder, canCreatePublicFolder, can
       if (mode === 'file') {
         if (!canUploadFiles) throw new Error('Only this folder owner can upload files here.');
         if (!file) throw new Error('Choose a file first.');
-        await uploadFile(user, currentFolderId, file, visibility, setStatus);
+        await uploadFile(user, role, currentFolderId, file, visibility, setStatus);
         setFile(null);
         const input = document.querySelector<HTMLInputElement>('#file-upload');
         if (input) input.value = '';
@@ -56,6 +59,10 @@ export function UploadPanel({ canCreatePrivateFolder, canCreatePublicFolder, can
     }
   }
 
+  const uploadLimitLabel = role === 'owner'
+    ? 'Owner upload: the Supabase project limit applies'
+    : `Up to ${formatBytes(memberMaxUploadBytes)}`;
+
   return (
     <aside className="upload-panel" aria-labelledby="upload-heading">
       <div>
@@ -72,7 +79,7 @@ export function UploadPanel({ canCreatePrivateFolder, canCreatePublicFolder, can
           <label className="file-drop" htmlFor="file-upload">
             <span className="file-drop__mark">＋</span>
             <span>{file ? file.name : 'Choose a file'}</span>
-            <small>{file ? 'Ready to upload' : 'Up to the configured storage limit'}</small>
+            <small>{file ? 'Ready to upload' : uploadLimitLabel}</small>
             <input id="file-upload" onChange={(event) => setFile(event.target.files?.[0] ?? null)} type="file" />
           </label>
         ) : (
