@@ -68,11 +68,10 @@ export function GoalCard({ goal, saved }: { goal: GoalState; saved: number }) {
 
 export function SavingsChart({ weeks, startingSavings }: { weeks: FinanceWeek[]; startingSavings: number }) {
   const ordered = [...weeks].sort((a, b) => a.week_start.localeCompare(b.week_start));
-  let running = startingSavings;
-  const values = ordered.map((week) => {
-    running += week.saved_pln;
-    return { week, value: running };
-  });
+  const values = ordered.reduce<Array<{ week: FinanceWeek; value: number }>>((items, week) => {
+    const previousValue = items.at(-1)?.value ?? startingSavings;
+    return [...items, { week, value: previousValue + week.saved_pln }];
+  }, []);
 
   if (!values.length) {
     return <div className="chart-empty"><span className="chart-empty__line" /><p>Add your first week to start the savings curve.</p></div>;
