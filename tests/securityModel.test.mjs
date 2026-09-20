@@ -12,8 +12,12 @@ const hardeningMigrationUrl = new URL('../supabase/migrations/202607200007_harde
 const ownerUploadMigrationUrl = new URL('../supabase/migrations/202607290008_owner_upload_size_exemption.sql', import.meta.url);
 const uploadReturnMigrationUrl = new URL('../supabase/migrations/202608020010_allow_upload_row_return.sql', import.meta.url);
 const storageReservationMigrationUrl = new URL('../supabase/migrations/202608020011_fix_storage_reservation_lookup.sql', import.meta.url);
+const legalAcceptanceMigrationUrl = new URL('../supabase/migrations/202609200012_legal_acceptances.sql', import.meta.url);
 const functionUrl = new URL('../supabase/functions/register-with-invite/index.ts', import.meta.url);
 const folderFunctionUrl = new URL('../supabase/functions/manage-folder/index.ts', import.meta.url);
+const accountToolsFunctionUrl = new URL('../supabase/functions/account-tools/index.ts', import.meta.url);
+const authPanelUrl = new URL('../src/components/AuthPanel.tsx', import.meta.url);
+const appUrl = new URL('../src/App.tsx', import.meta.url);
 const directoryServiceUrl = new URL('../src/services/directoryService.ts', import.meta.url);
 
 test('database migration keeps file metadata and storage behind RLS', async () => {
@@ -167,4 +171,46 @@ test('client validation bypasses the configured limit only for the owner role', 
   assert.match(source, /validateFile\(file, role\)/);
   assert.match(source, /validateFile\(replacement, role\)/);
   assert.match(source, /role !== 'owner' && file\.size > memberMaxUploadBytes/);
+});
+
+
+test('registration records versioned legal acceptance server-side', async () => {
+  const source = await readFile(functionUrl, 'utf8');
+  const migration = await readFile(legalAcceptanceMigrationUrl, 'utf8');
+  const authPanel = await readFile(authPanelUrl, 'utf8');
+
+  assert.match(source, /acceptedTerms !== true/);
+  assert.match(source, /termsVersion !== TERMS_VERSION/);
+  assert.match(source, /privacyVersion !== PRIVACY_VERSION/);
+  assert.match(source, /from\('legal_acceptances'\)\.insert/);
+  assert.match(migration, /create table public\.legal_acceptances/i);
+  assert.match(migration, /references auth\.users\(id\) on delete cascade/i);
+  assert.match(migration, /grant select on public\.legal_acceptances to authenticated/i);
+  assert.match(migration, /user_id = \(select auth\.uid\(\)\)/i);
+  assert.match(authPanel, /I agree to the/);
+  assert.match(authPanel, /Terms of Service/);
+  assert.match(authPanel, /Privacy Policy/);
+});
+
+test('account tools authenticate callers and protect automated owner deletion', async () => {
+  const source = await readFile(accountToolsFunctionUrl, 'utf8');
+  assert.match(source, /caller\.auth\.getUser\(\)/);
+  assert.match(source, /action !== 'export' && action !== 'delete'/);
+  assert.match(source, /profile\.role === 'owner'/);
+  assert.match(source, /storage[\s\S]*\.remove\(/);
+  assert.match(source, /auth\.admin\.deleteUser\(identity\.user\.id\)/);
+  assert.doesNotMatch(source, /const\s*\{[^}]*userId[^}]*\}\s*=\s*await request\.json/i);
+});
+
+test('application exposes explicit legal and error routes', async () => {
+  const source = await readFile(appUrl, 'utf8');
+  assert.match(source, /case '\/privacy'/);
+  assert.match(source, /case '\/terms'/);
+  assert.match(source, /case '\/acceptable-use'/);
+  assert.match(source, /case '\/abuse'/);
+  assert.match(source, /case '\/security'/);
+  assert.match(source, /case '\/account'/);
+  assert.match(source, /code="404"/);
+  assert.match(source, /code="410"/);
+  assert.match(source, /code="403"/);
 });
