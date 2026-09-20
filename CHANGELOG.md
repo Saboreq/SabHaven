@@ -6,6 +6,9 @@ The project follows semantic versioning where practical. GitHub Releases are the
 
 ## [Unreleased]
 
+### Fixed
+- Unknown production routes now return a dedicated HTTP 404 response with a branded noindex page instead of only rendering a client-side 404 inside an HTTP 200 SPA fallback.
+
 ### Planned
 - Continue hardening upload and storage workflows.
 - Improve operational visibility for self-hosted deployments.
