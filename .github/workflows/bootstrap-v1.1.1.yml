@@ -1,0 +1,56 @@
+name: Publish v1.1.1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/bootstrap-v1.1.1.yml
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Publish v1.1.1 if missing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if gh release view v1.1.1 >/dev/null 2>&1; then
+            echo "Release v1.1.1 already exists."
+            exit 0
+          fi
+
+          cat > /tmp/release-notes.md <<'EOF'
+          SabHaven v1.1.1 is the first formally documented open-source release of the project.
+
+          ## Highlights
+          - Invite-only file delivery with public downloads and owner-isolated private storage.
+          - Supabase Auth, Postgres RLS, Storage RLS, and short-lived signed download URLs.
+          - Role-aware owner/admin/member administration and invitation controls.
+          - Hardened private-folder ancestry and reserved-upload authorization.
+          - Role-aware upload-size enforcement with an owner exemption bounded by Supabase project limits.
+          - MIT licensing, self-hosting documentation, contribution guidance, security policy, CI, CODEOWNERS, issue templates, and Dependabot.
+
+          ## Self-hosting
+          See README.md for the Supabase setup, migrations, Edge Function deployment, environment variables, and Vercel/static-host deployment instructions.
+
+          ## Security
+          Review SECURITY.md before using SabHaven for sensitive or untrusted workloads. SabHaven is not end-to-end encrypted or independently audited and does not currently include malware scanning or per-user quotas.
+
+          ## Maintenance
+          See CHANGELOG.md for release history and ROADMAP.md for current maintenance priorities.
+          EOF
+
+          gh release create v1.1.1 \
+            --target "$GITHUB_SHA" \
+            --title "SabHaven v1.1.1 — First documented open-source release" \
+            --notes-file /tmp/release-notes.md
