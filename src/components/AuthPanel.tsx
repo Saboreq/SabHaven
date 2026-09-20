@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { FunctionsFetchError, FunctionsHttpError, FunctionsRelayError } from '@supabase/supabase-js';
 
+import { PRIVACY_VERSION, TERMS_VERSION } from '../lib/legal';
 import { supabase } from '../lib/supabase';
 import { useModalFocus } from '../lib/useModalFocus';
 
@@ -15,6 +16,7 @@ export function AuthPanel({ onClose }: AuthPanelProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [inviteCode, setInviteCode] = useState('');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
   const dialogRef = useModalFocus<HTMLElement>(true, onClose);
@@ -33,8 +35,17 @@ export function AuthPanel({ onClose }: AuthPanelProps) {
         return;
       }
 
+      if (!acceptedTerms) throw new Error('You must accept the Terms of Service before creating an account.');
+
       const { data, error } = await supabase.functions.invoke('register-with-invite', {
-        body: { email, password, inviteCode }
+        body: {
+          email,
+          password,
+          inviteCode,
+          acceptedTerms: true,
+          termsVersion: TERMS_VERSION,
+          privacyVersion: PRIVACY_VERSION
+        }
       });
       if (error) throw new Error(await describeFunctionError(error));
       if (!data?.ok) throw new Error(data?.error ?? 'Registration failed.');
@@ -97,21 +108,37 @@ export function AuthPanel({ onClose }: AuthPanelProps) {
             />
           </label>
           {mode === 'register' ? (
-            <label>
-              <span>Invite code</span>
-              <input
-                autoCapitalize="characters"
-                autoComplete="off"
-                onChange={(event) => setInviteCode(event.target.value)}
-                required
-                value={inviteCode}
-              />
-            </label>
+            <>
+              <label>
+                <span>Invite code</span>
+                <input
+                  autoCapitalize="characters"
+                  autoComplete="off"
+                  onChange={(event) => setInviteCode(event.target.value)}
+                  required
+                  value={inviteCode}
+                />
+              </label>
+              <label className="legal-consent">
+                <input
+                  checked={acceptedTerms}
+                  onChange={(event) => setAcceptedTerms(event.target.checked)}
+                  required
+                  type="checkbox"
+                />
+                <span>
+                  I agree to the <a href="/terms" onClick={(event) => event.stopPropagation()} target="_blank">Terms of Service</a> and acknowledge that I have read the <a href="/privacy" onClick={(event) => event.stopPropagation()} target="_blank">Privacy Policy</a>.
+                </span>
+              </label>
+            </>
           ) : null}
           {status ? <p className="form-status form-status--error" role="alert">{status}</p> : null}
-          <button className="primary-button" disabled={busy} type="submit">
+          <button className="primary-button" disabled={busy || (mode === 'register' && !acceptedTerms)} type="submit">
             {busy ? 'Working…' : mode === 'sign-in' ? 'Sign in' : 'Create account'}
           </button>
+          <p className="auth-legal-note">
+            By using the hosted service you are subject to the <a href="/terms">Terms</a> and <a href="/acceptable-use">Acceptable Use Policy</a>. See <a href="/privacy">Privacy</a> for data handling.
+          </p>
         </form>
       </section>
     </div>
@@ -134,7 +161,7 @@ async function describeFunctionError(error: unknown): Promise<string> {
     } catch {
       // Fall through to the safe generic message when the response is not JSON.
     }
-    return `Registration service returned HTTP ${error.context.status}.`;
+    return 'Registration service returned HTTP ' + error.context.status + '.';
   }
 
   return error instanceof Error ? error.message : 'Registration failed.';
