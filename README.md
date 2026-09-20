@@ -17,11 +17,15 @@ SabHaven is **open-source software released under the [MIT License](LICENSE)**. 
 
 Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the development and pull-request workflow and [SECURITY.md](SECURITY.md) for private vulnerability reporting.
 
+### Hosted-service policies
+
+The public deployment has dedicated [Privacy](https://files.saboreq.xyz/privacy), [Terms](https://files.saboreq.xyz/terms), [Acceptable Use](https://files.saboreq.xyz/acceptable-use), [Abuse reporting](https://files.saboreq.xyz/abuse), [Security](https://files.saboreq.xyz/security), and [Contact](https://files.saboreq.xyz/contact) pages. Repository copies of the core policies are available in [PRIVACY.md](PRIVACY.md), [TERMS.md](TERMS.md), and [ACCEPTABLE_USE.md](ACCEPTABLE_USE.md). Self-hosters are responsible for replacing these hosted-service terms and privacy disclosures with documents appropriate to their own deployment.
+
 ## Project status
 
 SabHaven is **actively maintained**. The repository uses GitHub Actions for validation, Dependabot for dependency maintenance, a public security policy, and documented release notes.
 
-- **Current version:** 1.1.1
+- **Current version:** 1.2.0
 - **Release history:** [GitHub Releases](https://github.com/Saboreq/SabHaven/releases) and [CHANGELOG.md](CHANGELOG.md)
 - **Roadmap:** [ROADMAP.md](ROADMAP.md)
 - **Contributions:** [CONTRIBUTING.md](CONTRIBUTING.md)
@@ -38,6 +42,9 @@ The project deliberately separates public file delivery from private member stor
 - 50 MiB upload limit for admin/user accounts with an owner-only exemption
 - Owner-only privacy across complete folder trees
 - Server-side invitation, role, upload-size, and destructive-action validation
+- Versioned Terms acceptance recorded during registration
+- Self-service account-data export and eligible account deletion
+- Privacy, Terms, acceptable-use, abuse, security, contact, 403/404/410, and application-error surfaces
 - Documented deployment, threat model, and known limitations
 
 ## Access model
@@ -61,6 +68,8 @@ These rules are enforced by Postgres and Storage row-level security, not only by
 - **Signed URLs** provide time-limited downloads and expire after 60 seconds.
 - **`register-with-invite`** validates and consumes invite codes without exposing privileged credentials to the browser.
 - **`manage-folder`** authenticates the caller, validates the complete folder chain, removes descendant objects, and deletes folder metadata.
+- **`account-tools`** requires a signed-in user, exports account-linked records, removes owned Storage objects before eligible account deletion, and blocks automated deletion of the owner account.
+- **`legal_acceptances`** stores server-timestamped Terms/privacy-notice versions shown during registration.
 - **Reserved upload rules** require authorised metadata before an object can be created.
 
 See [ADR 001](docs/adr/001-supabase-file-platform.md) for the storage design, [ADR 002](docs/adr/002-role-aware-administration.md) for role boundaries, and [SECURITY.md](SECURITY.md) for the threat model and known limitations.
@@ -71,7 +80,7 @@ See [ADR 001](docs/adr/001-supabase-file-platform.md) for the storage design, [A
 | --- | --- |
 | `src/` | React application, components, and browser-side services |
 | `supabase/migrations/` | Forward-only schema, RLS, trigger, and authorization changes |
-| `supabase/functions/` | Privileged invitation and recursive-folder operations |
+| `supabase/functions/` | Privileged invitation, recursive-folder, and authenticated account/privacy operations |
 | `tests/` | Static security and integration-contract regression tests |
 | `docs/adr/` | Architectural decisions and rejected alternatives |
 | `.github/` | Continuous integration, dependency updates, and contribution templates |
@@ -110,6 +119,7 @@ Apply the migrations and deploy the server functions:
    npx supabase db push
    npx supabase functions deploy register-with-invite --no-verify-jwt
    npx supabase functions deploy manage-folder --no-verify-jwt
+   npx supabase functions deploy account-tools
    ```
 
    Database migrations and server functions are separate from a Vercel deployment.
@@ -143,11 +153,11 @@ The production output is written to `dist/`.
 
 ### 4. Deploy the frontend
 
-**Vercel:** import this GitHub repository, set the required `VITE_*` environment variables, and deploy. The included `vercel.json` provides the SPA rewrite required for virtual-folder URLs.
+**Vercel:** import this GitHub repository, set the required `VITE_*` environment variables, and deploy. The included `vercel.json` provides the SPA rewrite required for application routes and sends security headers including CSP, HSTS, frame denial, content-type protection, a referrer policy, and a restrictive permissions policy.
 
 **Other static hosts:** publish the `dist/` directory and configure all non-file routes to fall back to `/index.html`. Use HTTPS in production and set `ALLOWED_ORIGIN` in Supabase to the exact production origin.
 
-After deploying, verify login, invitation redemption, private-folder isolation, uploads, downloads, replacement, and deletion before using the instance for real data.
+After deploying, verify login, invitation redemption, Terms acceptance, account export/deletion, legal routes, private-folder isolation, uploads, downloads, replacement, and deletion before using the instance for real data.
 
 ## Bootstrap the first owner
 
