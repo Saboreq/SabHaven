@@ -22,8 +22,12 @@ Current controls include:
 - owner, admin, and user roles enforced by server-side database functions;
 - service-role credentials restricted to Edge Functions;
 - exact production-origin configuration for browser requests;
+- a restrictive hosted Content Security Policy, HSTS, frame denial, MIME-sniffing protection, referrer policy, and browser permissions policy;
+- versioned Terms acceptance recorded server-side during registration;
+- JWT-protected account export and deletion tooling that resolves the authenticated caller server-side;
 - metadata reservation before upload, with Storage inserts restricted to matching owner metadata;
-- generic public authentication errors to reduce account and invite disclosure.
+- generic public authentication errors to reduce account and invite disclosure;
+- authenticated users can read only their own invite-redemption and legal-acceptance history.
 
 ## Important limitations
 
@@ -32,7 +36,7 @@ SabHaven is not an end-to-end encrypted storage product. The hosting providers a
 The project currently does not provide:
 
 - malware or antivirus scanning;
-- content moderation;
+- automated content moderation (abuse and illegal-content reports are handled through the published reporting channel);
 - per-user storage quotas;
 - resumable or multipart uploads;
 - a complete user-facing audit log;
@@ -52,3 +56,8 @@ Include:
 5. any suggested mitigation.
 
 Please avoid accessing, modifying, or deleting data that does not belong to you. Reasonable time will be taken to validate and fix a report before public disclosure.
+
+
+## Database-linter notes
+
+Some privileged administration RPCs are intentionally implemented as `SECURITY DEFINER` functions callable by the authenticated role. Each such function derives the caller from `auth.uid()` and performs an explicit owner/admin role check before privileged work. Supabase may still report these functions as a generic linter warning because the warning cannot prove the application-specific authorization logic. Treat any future change to these functions as security-sensitive and keep their regression tests current.
