@@ -1,10 +1,13 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import type { Session } from '@supabase/supabase-js';
-import { ArrowLeft, LayoutDashboard, LockKeyhole } from 'lucide-react';
+import { ArrowLeft, LayoutDashboard, UserRound } from 'lucide-react';
 
+import { AccountPrivacy } from './components/AccountPrivacy';
 import { AuthPanel } from './components/AuthPanel';
 import { DirectoryList } from './components/DirectoryList';
+import { LegalPage, type LegalKind } from './components/LegalPage';
+import { StatusPage } from './components/StatusPage';
 import { StatusToast } from './components/StatusToast';
 import { UploadPanel } from './components/UploadPanel';
 import { WelcomeGate } from './components/WelcomeGate';
@@ -16,16 +19,47 @@ import type { DirectoryContents, FolderRecord, ProfileRecord } from './types';
 const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
 const emptyContents: DirectoryContents = { folders: [], files: [] };
 const folderIdFromUrl = () => new URLSearchParams(window.location.search).get('folder');
-const routeFromUrl = () => window.location.pathname === '/dashboard' ? 'dashboard' : 'browser';
+
+type Route = 'browser' | 'dashboard' | LegalKind | 'account' | 'not-found';
 type EntryState = 'welcome' | 'leaving' | 'entered';
-type Route = 'browser' | 'dashboard';
 type RouteTransitionDirection = 'forward' | 'back';
 
 let routeTransitionToken = 0;
 
-/* pushState route swaps never trigger the CSS `navigation: auto` opt-in, so
-   same-document transitions must be started here. The data attribute drives
-   the direction-aware rules in view-transitions.css. */
+function routeFromUrl(): Route {
+  switch (window.location.pathname.replace(/\/+$/, '') || '/') {
+    case '/':
+      return 'browser';
+    case '/dashboard':
+      return 'dashboard';
+    case '/privacy':
+      return 'privacy';
+    case '/terms':
+      return 'terms';
+    case '/acceptable-use':
+      return 'acceptable-use';
+    case '/abuse':
+      return 'abuse';
+    case '/security':
+      return 'security';
+    case '/contact':
+      return 'contact';
+    case '/account':
+      return 'account';
+    default:
+      return 'not-found';
+  }
+}
+
+function isLegalRoute(route: Route): route is LegalKind {
+  return route === 'privacy'
+    || route === 'terms'
+    || route === 'acceptable-use'
+    || route === 'abuse'
+    || route === 'security'
+    || route === 'contact';
+}
+
 function runRouteTransition(direction: RouteTransitionDirection, apply: () => void) {
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (reducedMotion || typeof document.startViewTransition !== 'function') {
@@ -40,6 +74,15 @@ function runRouteTransition(direction: RouteTransitionDirection, apply: () => vo
   document.startViewTransition(() => flushSync(apply)).finished.then(clear, clear);
 }
 
+function isUnavailableResourceError(error: unknown) {
+  return Boolean(
+    error
+    && typeof error === 'object'
+    && 'code' in error
+    && (error as { code?: unknown }).code === 'PGRST116'
+  );
+}
+
 export default function App() {
   const initialRoute = routeFromUrl();
   const [route, setRoute] = useState<Route>(initialRoute);
@@ -48,12 +91,13 @@ export default function App() {
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState('');
   const [authOpen, setAuthOpen] = useState(false);
-  const [currentFolderId, setCurrentFolderId] = useState<string | null>(folderIdFromUrl);
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(initialRoute === 'browser' ? folderIdFromUrl() : null);
   const [folderChain, setFolderChain] = useState<FolderRecord[]>([]);
   const [contents, setContents] = useState<DirectoryContents>(emptyContents);
-  const [entryState, setEntryState] = useState<EntryState>(initialRoute === 'dashboard' ? 'entered' : 'welcome');
+  const [entryState, setEntryState] = useState<EntryState>(initialRoute === 'browser' ? 'welcome' : 'entered');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [resourceUnavailable, setResourceUnavailable] = useState(false);
   const [notificationVisible, setNotificationVisible] = useState(false);
   const entryTimerRef = useRef<number | null>(null);
   const firstLoadRef = useRef(true);
@@ -79,6 +123,7 @@ export default function App() {
     const minimumLoadingTime = firstLoadRef.current ? 620 : 0;
     setLoading(true);
     setLoadError('');
+    setResourceUnavailable(false);
     setNotificationVisible(false);
     try {
       const [nextContents, nextChain] = await Promise.all([fetchDirectory(currentFolderId), fetchFolderChain(currentFolderId)]);
@@ -87,8 +132,12 @@ export default function App() {
     } catch (error) {
       setContents(emptyContents);
       setFolderChain([]);
-      setLoadError(error instanceof Error ? error.message : 'Could not load this directory.');
-      setNotificationVisible(true);
+      if (currentFolderId && isUnavailableResourceError(error)) {
+        setResourceUnavailable(true);
+      } else {
+        setLoadError(error instanceof Error ? error.message : 'Could not load this directory.');
+        setNotificationVisible(true);
+      }
     } finally {
       const remainingTime = minimumLoadingTime - (performance.now() - startedAt);
       if (remainingTime > 0) await new Promise((resolve) => window.setTimeout(resolve, remainingTime));
@@ -162,12 +211,13 @@ export default function App() {
   function navigate(folder: FolderRecord | null) {
     const id = folder?.id ?? null;
     const apply = () => {
-      window.history.pushState({}, '', id ? `/?folder=${encodeURIComponent(id)}` : '/');
+      window.history.pushState({}, '', id ? '/?folder=' + encodeURIComponent(id) : '/');
       setRoute('browser');
       setEntryState('entered');
       setCurrentFolderId(id);
+      setResourceUnavailable(false);
     };
-    if (route === 'dashboard') runRouteTransition('back', apply);
+    if (route !== 'browser') runRouteTransition('back', apply);
     else apply();
   }
 
@@ -178,6 +228,13 @@ export default function App() {
       setRoute('dashboard');
       setCurrentFolderId(null);
     });
+  }
+
+  function navigateAccount() {
+    if (route === 'account') return;
+    window.history.pushState({}, '', '/account');
+    setRoute('account');
+    setCurrentFolderId(null);
   }
 
   function enterWorkspace() {
@@ -192,17 +249,18 @@ export default function App() {
 
   return (
     <>
-      <div aria-hidden={shellLocked ? true : undefined} className={`site-shell site-shell--${entryState}`} inert={shellLocked}>
+      <div aria-hidden={shellLocked ? true : undefined} className={'site-shell site-shell--' + entryState} inert={shellLocked}>
         <div className="ambient-background" aria-hidden="true"><span className="ambient-background__aurora" /><span className="ambient-background__beam" /><span className="ambient-background__grain" /></div>
         <header className="topbar">
           <a className="brand" href="/" onClick={(event) => { event.preventDefault(); navigate(null); }}><span className="brand-mark" aria-hidden="true">S/</span><span>SabHaven</span></a>
           <nav aria-label="Account">
             {session ? (
               <div className="account-actions">
-                {route === 'dashboard' ? <button className="ghost-button nav-button" onClick={() => navigate(null)} type="button"><ArrowLeft size={14} /> Back to files</button>
+                {route !== 'browser' ? <button className="ghost-button nav-button" onClick={() => navigate(null)} type="button"><ArrowLeft size={14} /> Back to files</button>
                   : privileged ? <button className="ghost-button nav-button" onClick={navigateDashboard} type="button"><LayoutDashboard size={14} /> Dashboard</button> : null}
+                {route !== 'account' ? <button className="ghost-button nav-button" onClick={navigateAccount} type="button"><UserRound size={14} /> Account</button> : null}
                 <span className="account-email">{visibleEmail}</span>
-                {route === 'dashboard' && profile ? <span className={`role-badge role-badge--${profile.role}`}>{profile.role}</span> : null}
+                {route === 'dashboard' && profile ? <span className={'role-badge role-badge--' + profile.role}>{profile.role}</span> : null}
                 <button className="ghost-button" onClick={() => void supabase?.auth.signOut()} type="button">Sign out</button>
               </div>
             ) : <button className="ghost-button" disabled={!isSupabaseConfigured} onClick={() => setAuthOpen(true)} type="button">Member sign in</button>}
@@ -212,7 +270,16 @@ export default function App() {
         {route === 'dashboard' ? (
           profileLoading ? <DashboardFallback />
             : session && profile && privileged ? <Suspense fallback={<DashboardFallback />}><AdminDashboard profile={profile} user={session.user} /></Suspense>
-              : <main className="access-denied"><LockKeyhole aria-hidden="true" size={26} /><p className="eyebrow">Restricted area</p><h1>Dashboard access required</h1><p>{profileError || (session ? 'This account does not have an owner or admin role.' : 'Sign in with an owner or admin account to continue.')}</p>{!session ? <button className="primary-button" onClick={() => setAuthOpen(true)} type="button">Member sign in</button> : <button className="secondary-button" onClick={() => navigate(null)} type="button">Back to files</button>}</main>
+              : <StatusPage code="403" title="Dashboard access required" message={profileError || (session ? 'This account does not have an owner or admin role.' : 'Sign in with an owner or admin account to continue.')} />
+        ) : isLegalRoute(route) ? (
+          <LegalPage kind={route} />
+        ) : route === 'account' ? (
+          session ? <AccountPrivacy profile={profile} session={session} />
+            : <StatusPage code="403" title="Sign in to manage your data" message="The Account & Privacy page is available to signed-in SabHaven members." actionLabel="Return and sign in" />
+        ) : route === 'not-found' ? (
+          <StatusPage code="404" title="Page not found" message="That SabHaven route does not exist. Check the address or return to the file portal." />
+        ) : resourceUnavailable ? (
+          <StatusPage code="410" title="Resource unavailable" message="The requested folder is no longer available or cannot be accessed by this session." />
         ) : (
           <main className="workspace-main">
             {!isSupabaseConfigured ? <section className="setup-notice" aria-labelledby="setup-title"><span className="setup-notice__mark" aria-hidden="true">!</span><div><p className="eyebrow">Setup required</p><h2 id="setup-title">Connect this build to Supabase</h2><p>Copy <code>.env.example</code> to <code>.env.local</code>, add the project URL and publishable key, then apply the included migration.</p></div></section> : null}
@@ -226,7 +293,21 @@ export default function App() {
           </main>
         )}
 
-        <footer><span>SabHaven</span><span className="developer-credit">Developed by <a href="https://saboreq.xyz" rel="noreferrer" target="_blank">Saboreq</a></span><span>Short-lived links · Owner-only private access</span></footer>
+        <footer className="site-footer">
+          <div className="footer-brand">
+            <strong>SabHaven</strong>
+            <span className="developer-credit">Developed by <a href="https://saboreq.xyz" rel="noreferrer" target="_blank">Saboreq</a></span>
+          </div>
+          <nav className="footer-links" aria-label="Legal and support">
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
+            <a href="/acceptable-use">Acceptable Use</a>
+            <a href="/abuse">Report abuse</a>
+            <a href="/security">Security</a>
+            <a href="/contact">Contact</a>
+          </nav>
+          <span className="footer-security">Short-lived links · Owner-only private access</span>
+        </footer>
         {authOpen ? <AuthPanel onClose={() => setAuthOpen(false)} /> : null}
       </div>
       {route === 'browser' && entryState !== 'entered' ? <WelcomeGate leaving={entryState === 'leaving'} onEnter={enterWorkspace} /> : null}
