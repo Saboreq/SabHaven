@@ -1,4 +1,4 @@
-name: Publish v1.1.1
+name: Finalize v1.1.1
 
 on:
   push:
@@ -10,47 +10,43 @@ permissions:
   contents: write
 
 jobs:
-  publish:
-    name: Publish GitHub Release
+  finalize:
+    name: Validate and attach release bundle
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
-      - name: Check out repository
+      - name: Check out v1.1.1
         uses: actions/checkout@v7
+        with:
+          ref: v1.1.1
 
-      - name: Publish v1.1.1 if missing
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run quality checks
+        run: npm run check
+
+      - name: Audit production dependencies
+        run: npm run audit:prod
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Package self-hosted bundle
         shell: bash
         run: |
-          if gh release view v1.1.1 >/dev/null 2>&1; then
-            echo "Release v1.1.1 already exists."
-            exit 0
-          fi
+          archive="sabhaven-v1.1.1.tar.gz"
+          tar -czf "$archive" dist README.md LICENSE .env.example vercel.json
+          echo "ARCHIVE=$archive" >> "$GITHUB_ENV"
 
-          cat > /tmp/release-notes.md <<'EOF'
-          SabHaven v1.1.1 is the first formally documented open-source release of the project.
-
-          ## Highlights
-          - Invite-only file delivery with public downloads and owner-isolated private storage.
-          - Supabase Auth, Postgres RLS, Storage RLS, and short-lived signed download URLs.
-          - Role-aware owner/admin/member administration and invitation controls.
-          - Hardened private-folder ancestry and reserved-upload authorization.
-          - Role-aware upload-size enforcement with an owner exemption bounded by Supabase project limits.
-          - MIT licensing, self-hosting documentation, contribution guidance, security policy, CI, CODEOWNERS, issue templates, and Dependabot.
-
-          ## Self-hosting
-          See README.md for the Supabase setup, migrations, Edge Function deployment, environment variables, and Vercel/static-host deployment instructions.
-
-          ## Security
-          Review SECURITY.md before using SabHaven for sensitive or untrusted workloads. SabHaven is not end-to-end encrypted or independently audited and does not currently include malware scanning or per-user quotas.
-
-          ## Maintenance
-          See CHANGELOG.md for release history and ROADMAP.md for current maintenance priorities.
-          EOF
-
-          gh release create v1.1.1 \
-            --target "$GITHUB_SHA" \
-            --title "SabHaven v1.1.1 — First documented open-source release" \
-            --notes-file /tmp/release-notes.md
+      - name: Attach bundle to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload v1.1.1 "$ARCHIVE" --clobber
