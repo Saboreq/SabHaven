@@ -1,0 +1,5 @@
+Contact: mailto:contact@saboreq.xyz
+Canonical: https://files.saboreq.xyz/.well-known/security.txt
+Policy: https://files.saboreq.xyz/security
+Preferred-Languages: en, pl
+Expires: 2027-09-20T00:00:00.000Z
