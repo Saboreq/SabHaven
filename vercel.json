@@ -33,8 +33,40 @@
   ],
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/dashboard",
       "destination": "/index.html"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/terms",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/acceptable-use",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/abuse",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/security",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/contact",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/account",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/api/not-found"
     }
   ]
 }
