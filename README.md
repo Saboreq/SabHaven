@@ -2,6 +2,9 @@
 
 [![CI](https://github.com/Saboreq/SabHaven/actions/workflows/ci.yml/badge.svg)](https://github.com/Saboreq/SabHaven/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![GitHub release](https://img.shields.io/github/v/release/Saboreq/SabHaven?display_name=tag&sort=semver)](https://github.com/Saboreq/SabHaven/releases)
+[![Last commit](https://img.shields.io/github/last-commit/Saboreq/SabHaven)](https://github.com/Saboreq/SabHaven/commits/main)
+[![Open issues](https://img.shields.io/github/issues/Saboreq/SabHaven)](https://github.com/Saboreq/SabHaven/issues)
 [![Live application](https://img.shields.io/badge/live-files.saboreq.xyz-7c3aed)](https://files.saboreq.xyz)
 
 SabHaven is an invite-only file delivery application for controlled public downloads and owner-only private storage. Visitors can browse public content without an account. Signed-in members can upload files, organise private folders, replace existing uploads, and remove their own content. Owner and admin roles manage the public structure and invitation dashboard without gaining access to another member's private files.
@@ -13,6 +16,19 @@ SabHaven is an invite-only file delivery application for controlled public downl
 SabHaven is **open-source software released under the [MIT License](LICENSE)**. You may inspect, self-host, modify, and redistribute the code under the terms of that license. The hosted instance at `files.saboreq.xyz` is one deployment of the project; the repository is designed so other developers can run their own independent instance.
 
 Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the development and pull-request workflow and [SECURITY.md](SECURITY.md) for private vulnerability reporting.
+
+## Project status
+
+SabHaven is **actively maintained**. The repository uses GitHub Actions for validation, Dependabot for dependency maintenance, a public security policy, and documented release notes.
+
+- **Current version:** 1.1.1
+- **Release history:** [GitHub Releases](https://github.com/Saboreq/SabHaven/releases) and [CHANGELOG.md](CHANGELOG.md)
+- **Roadmap:** [ROADMAP.md](ROADMAP.md)
+- **Contributions:** [CONTRIBUTING.md](CONTRIBUTING.md)
+- **Security:** [SECURITY.md](SECURITY.md)
+- **Production deployment:** [files.saboreq.xyz](https://files.saboreq.xyz)
+
+The project deliberately separates public file delivery from private member storage, with authorization enforced at the database and storage layers rather than only in the browser.
 
 ## Key capabilities
 
