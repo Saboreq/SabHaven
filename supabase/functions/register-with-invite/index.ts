@@ -1,5 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
+const TERMS_VERSION = '2026-09-20';
+const PRIVACY_VERSION = '2026-09-20';
 const configuredOrigin = (Deno.env.get('ALLOWED_ORIGIN') ?? '').replace(/\/+$/, '');
 const corsBaseHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -64,12 +66,16 @@ Deno.serve(async (request) => {
   if (request.method !== 'POST') return json(request, { ok: false, error: 'Method not allowed.' }, 405);
 
   try {
-    const { email, password, inviteCode } = await request.json();
+    const { email, password, inviteCode, acceptedTerms, termsVersion, privacyVersion } = await request.json();
     const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
     const normalizedCode = typeof inviteCode === 'string' ? inviteCode.trim() : '';
 
     if (!/^\S+@\S+\.\S+$/.test(normalizedEmail) || typeof password !== 'string' || password.length < 8 || password.length > 128 || normalizedCode.length < 10) {
       return json(request, { ok: false, error: 'Check the email, password, and invite code.' }, 400);
+    }
+
+    if (acceptedTerms !== true || termsVersion !== TERMS_VERSION || privacyVersion !== PRIVACY_VERSION) {
+      return json(request, { ok: false, error: 'Accept the current Terms of Service and review the current Privacy Policy before registering.' }, 400);
     }
 
     const url = Deno.env.get('SUPABASE_URL');
@@ -84,7 +90,7 @@ Deno.serve(async (request) => {
       .select('id, use_count, max_uses, target_role')
       .eq('code_hash', codeHash)
       .is('disabled_at', null)
-      .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+      .or('expires_at.is.null,expires_at.gt.' + new Date().toISOString())
       .limit(1)
       .maybeSingle();
 
@@ -100,6 +106,16 @@ Deno.serve(async (request) => {
     });
     if (createError || !created.user) return json(request, { ok: false, error: 'Could not create this account.' }, 400);
 
+    const { error: legalError } = await admin.from('legal_acceptances').insert({
+      user_id: created.user.id,
+      terms_version: TERMS_VERSION,
+      privacy_notice_version: PRIVACY_VERSION
+    });
+    if (legalError) {
+      await admin.auth.admin.deleteUser(created.user.id);
+      throw legalError;
+    }
+
     const { data: consumed, error: consumeError } = await admin.rpc('consume_invite', {
       p_code_hash: codeHash,
       p_user_id: created.user.id
@@ -110,7 +126,12 @@ Deno.serve(async (request) => {
       return json(request, { ok: false, error: 'This invite is invalid or no longer available.' }, 403);
     }
 
-    return json(request, { ok: true, role: consumed }, 201);
+    return json(request, {
+      ok: true,
+      role: consumed,
+      termsVersion: TERMS_VERSION,
+      privacyVersion: PRIVACY_VERSION
+    }, 201);
   } catch (error) {
     console.error('register-with-invite failed', error instanceof Error ? error.message : error);
     return json(request, { ok: false, error: 'Registration is temporarily unavailable.' }, 500);
