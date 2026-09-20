@@ -11,6 +11,29 @@ The project follows semantic versioning where practical. GitHub Releases are the
 - Improve operational visibility for self-hosted deployments.
 - Expand contributor-facing tests and documentation.
 
+## [1.2.0] - 2026-09-20
+
+Legal, privacy, account-control, and error-state release.
+
+### Added
+- Hosted Privacy Policy, Terms of Service, Acceptable Use, abuse-reporting, security, and contact pages.
+- Versioned Terms acceptance during invitation registration with server-timestamped legal-acceptance records.
+- Signed-in account-data export and automated deletion for eligible non-owner accounts.
+- Custom 403, 404, 410, and application-error surfaces.
+- RFC 9116-style security.txt contact metadata.
+- Repository copies of hosted Privacy, Terms, and Acceptable Use policies.
+
+### Security
+- Account deletion removes owned Storage objects before deleting the Auth account.
+- Automated account deletion refuses the single owner account.
+- Account tools require a valid user JWT and independently resolve the authenticated caller.
+- Hosted Vercel responses now include a Content Security Policy, HSTS, frame denial, referrer policy, MIME-sniffing protection, and restrictive browser permissions.
+
+### Changed
+- Registration explicitly separates contractual Terms acceptance from acknowledgement of the Privacy Policy.
+- Footer navigation exposes legal, abuse, security, and contact routes on every page.
+- Self-hosting documentation now includes the account-tools Edge Function and legal-deployment responsibilities.
+
 ## [1.1.1] - 2026-09-20
 
 First formally documented open-source release of SabHaven.
@@ -33,5 +56,6 @@ First formally documented open-source release of SabHaven.
 - Improved public documentation around architecture, access boundaries, deployment, and known limitations.
 - Added a complete installation and self-hosting path for Supabase + Vercel or another static host.
 
-[Unreleased]: https://github.com/Saboreq/SabHaven/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/Saboreq/SabHaven/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/Saboreq/SabHaven/releases/tag/v1.2.0
 [1.1.1]: https://github.com/Saboreq/SabHaven/releases/tag/v1.1.1
