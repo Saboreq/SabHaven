@@ -41,7 +41,7 @@ jobs:
         shell: bash
         run: |
           archive="sabhaven-${{ github.event.release.tag_name }}.tar.gz"
-          tar -czf "$archive" dist README.md LICENSE .env.example vercel.json
+          tar -czf "$archive" dist README.md LICENSE PRIVACY.md TERMS.md ACCEPTABLE_USE.md SECURITY.md .env.example vercel.json
           echo "ARCHIVE=$archive" >> "$GITHUB_ENV"
 
       - name: Attach bundle to GitHub Release
