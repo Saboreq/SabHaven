@@ -19,6 +19,8 @@ const folderFunctionUrl = new URL('../supabase/functions/manage-folder/index.ts'
 const accountToolsFunctionUrl = new URL('../supabase/functions/account-tools/index.ts', import.meta.url);
 const authPanelUrl = new URL('../src/components/AuthPanel.tsx', import.meta.url);
 const appUrl = new URL('../src/App.tsx', import.meta.url);
+const vercelConfigUrl = new URL('../vercel.json', import.meta.url);
+const notFoundFunctionUrl = new URL('../api/not-found.js', import.meta.url);
 const directoryServiceUrl = new URL('../src/services/directoryService.ts', import.meta.url);
 
 test('database migration keeps file metadata and storage behind RLS', async () => {
@@ -223,4 +225,17 @@ test('invite redemption history is readable only by its member', async () => {
   assert.match(sql, /Members read their own invite redemptions/i);
   assert.match(sql, /user_id = \(select auth\.uid\(\)\)/i);
   assert.doesNotMatch(sql, /to anon/i);
+});
+
+
+test('unknown hosted routes return a dedicated HTTP 404 response', async () => {
+  const config = JSON.parse(await readFile(vercelConfigUrl, 'utf8'));
+  const source = await readFile(notFoundFunctionUrl, 'utf8');
+  const fallback = config.rewrites.at(-1);
+
+  assert.equal(fallback.source, '/(.*)');
+  assert.equal(fallback.destination, '/api/not-found');
+  assert.match(source, /response\.status\(404\)/);
+  assert.match(source, /<meta name="robots" content="noindex"/);
+  assert.match(source, /Page not found/);
 });
