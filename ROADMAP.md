@@ -13,8 +13,8 @@ SabHaven is actively maintained. This roadmap communicates intended maintenance 
 
 These items are useful future directions and are not commitments to a specific release:
 
-- Optional malware-scanning integration for untrusted uploads.
-- Per-user storage quotas and administrator-visible quota reporting.
+- [Optional malware-scanning integration for untrusted uploads](https://github.com/Saboreq/SabHaven/issues/14).
+- [Per-user storage quotas and administrator-visible quota reporting](https://github.com/Saboreq/SabHaven/issues/15).
 - More operational diagnostics for failed uploads and Edge Function errors.
 - Additional end-to-end tests around invitation redemption, folder ancestry, replacement, and deletion.
 - Better backup/restore guidance for self-hosted Supabase deployments.
