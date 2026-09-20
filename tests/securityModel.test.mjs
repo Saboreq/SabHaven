@@ -13,6 +13,7 @@ const ownerUploadMigrationUrl = new URL('../supabase/migrations/202607290008_own
 const uploadReturnMigrationUrl = new URL('../supabase/migrations/202608020010_allow_upload_row_return.sql', import.meta.url);
 const storageReservationMigrationUrl = new URL('../supabase/migrations/202608020011_fix_storage_reservation_lookup.sql', import.meta.url);
 const legalAcceptanceMigrationUrl = new URL('../supabase/migrations/202609200012_legal_acceptances.sql', import.meta.url);
+const inviteRedemptionVisibilityMigrationUrl = new URL('../supabase/migrations/202609200013_invite_redemption_visibility.sql', import.meta.url);
 const functionUrl = new URL('../supabase/functions/register-with-invite/index.ts', import.meta.url);
 const folderFunctionUrl = new URL('../supabase/functions/manage-folder/index.ts', import.meta.url);
 const accountToolsFunctionUrl = new URL('../supabase/functions/account-tools/index.ts', import.meta.url);
@@ -213,4 +214,13 @@ test('application exposes explicit legal and error routes', async () => {
   assert.match(source, /code="404"/);
   assert.match(source, /code="410"/);
   assert.match(source, /code="403"/);
+});
+
+
+test('invite redemption history is readable only by its member', async () => {
+  const sql = await readFile(inviteRedemptionVisibilityMigrationUrl, 'utf8');
+  assert.match(sql, /grant select on public\.invite_redemptions to authenticated/i);
+  assert.match(sql, /Members read their own invite redemptions/i);
+  assert.match(sql, /user_id = \(select auth\.uid\(\)\)/i);
+  assert.doesNotMatch(sql, /to anon/i);
 });
