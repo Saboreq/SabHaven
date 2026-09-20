@@ -1,11 +1,18 @@
 # SabHaven
 
 [![CI](https://github.com/Saboreq/SabHaven/actions/workflows/ci.yml/badge.svg)](https://github.com/Saboreq/SabHaven/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Live application](https://img.shields.io/badge/live-files.saboreq.xyz-7c3aed)](https://files.saboreq.xyz)
 
 SabHaven is an invite-only file delivery application for controlled public downloads and owner-only private storage. Visitors can browse public content without an account. Signed-in members can upload files, organise private folders, replace existing uploads, and remove their own content. Owner and admin roles manage the public structure and invitation dashboard without gaining access to another member's private files.
 
 **Live application:** [files.saboreq.xyz](https://files.saboreq.xyz)
+
+## Open source
+
+SabHaven is **open-source software released under the [MIT License](LICENSE)**. You may inspect, self-host, modify, and redistribute the code under the terms of that license. The hosted instance at `files.saboreq.xyz` is one deployment of the project; the repository is designed so other developers can run their own independent instance.
+
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the development and pull-request workflow and [SECURITY.md](SECURITY.md) for private vulnerability reporting.
 
 ## Key capabilities
 
@@ -53,16 +60,35 @@ See [ADR 001](docs/adr/001-supabase-file-platform.md) for the storage design, [A
 | `docs/adr/` | Architectural decisions and rejected alternatives |
 | `.github/` | Continuous integration, dependency updates, and contribution templates |
 
-## Local setup
+## Installation and self-hosting
 
-1. Create a Supabase project, install the Supabase CLI, and link it:
+### Requirements
+
+- Node.js 20.19 or newer
+- npm 10 or newer
+- A Supabase project
+- Supabase CLI
+- A frontend host such as Vercel, or any static host that supports SPA fallback routing
+
+### 1. Clone and install
+
+```powershell
+git clone https://github.com/Saboreq/SabHaven.git
+cd SabHaven
+npm ci
+```
+
+### 2. Configure Supabase
+
+
+Create a Supabase project, authenticate the Supabase CLI, and link the repository to your project:
 
    ```powershell
    npx supabase login
    npx supabase link --project-ref YOUR_PROJECT_REF
    ```
 
-2. Apply the migrations and deploy the server functions:
+Apply the migrations and deploy the server functions:
 
    ```powershell
    npx supabase db push
@@ -72,24 +98,40 @@ See [ADR 001](docs/adr/001-supabase-file-platform.md) for the storage design, [A
 
    Database migrations and server functions are separate from a Vercel deployment.
 
-3. In **Supabase Dashboard → Storage → Settings**, set the project-wide **Global file size limit** to the largest file the owner should be able to upload. The migration removes the `downloads` bucket's 50 MiB override, but it cannot bypass the project or plan limit.
+In **Supabase Dashboard → Storage → Settings**, set the project-wide **Global file size limit** to the largest file the owner should be able to upload. The migration removes the `downloads` bucket's 50 MiB override, but it cannot bypass the project or plan limit.
 
-4. In **Supabase Dashboard → Authentication → Sign In / Providers**, disable **Allow new users to sign up**. Registration remains available through the invitation flow.
+In **Supabase Dashboard → Authentication → Sign In / Providers**, disable **Allow new users to sign up**. Registration remains available through the invitation flow.
 
-5. Allow the exact production browser origin:
+Allow the exact production browser origin:
 
    ```powershell
    npx supabase secrets set ALLOWED_ORIGIN=https://your-site.example
    ```
 
-6. Copy `.env.example` to `.env.local` and set the project URL and publishable key. Never place a secret or service-role key in a `VITE_` variable.
+### 3. Configure the frontend
 
-7. Install the lockfile-defined dependencies and run:
+Copy `.env.example` to `.env.local` and set the project URL and publishable key. Never place a secret or service-role key in a `VITE_` variable.
 
-   ```powershell
-   npm ci
-   npm run dev
-   ```
+```powershell
+Copy-Item .env.example .env.local
+npm run dev
+```
+
+The development server is intended for local development. For a production self-hosted instance, build the static application with:
+
+```powershell
+npm run build
+```
+
+The production output is written to `dist/`.
+
+### 4. Deploy the frontend
+
+**Vercel:** import this GitHub repository, set the required `VITE_*` environment variables, and deploy. The included `vercel.json` provides the SPA rewrite required for virtual-folder URLs.
+
+**Other static hosts:** publish the `dist/` directory and configure all non-file routes to fall back to `/index.html`. Use HTTPS in production and set `ALLOWED_ORIGIN` in Supabase to the exact production origin.
+
+After deploying, verify login, invitation redemption, private-folder isolation, uploads, downloads, replacement, and deletion before using the instance for real data.
 
 ## Bootstrap the first owner
 
@@ -164,3 +206,8 @@ Review [SECURITY.md](SECURITY.md) before using SabHaven for sensitive or untrust
 See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup, migration rules, validation requirements, and pull request expectations. Security issues must follow the private reporting process in [SECURITY.md](SECURITY.md).
 
 Created and maintained by the independent developer behind [Saboreq](https://saboreq.xyz), a public development brand.
+
+
+## License
+
+SabHaven is licensed under the [MIT License](LICENSE).
