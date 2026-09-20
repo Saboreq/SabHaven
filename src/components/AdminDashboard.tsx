@@ -160,7 +160,7 @@ export default function AdminDashboard({ profile, user }: AdminDashboardProps) {
             <div className="form-columns"><label><span>Max uses</span><input max={1000} min={1} onChange={(event) => setMaxUses(Number(event.target.value))} type="number" value={maxUses} /></label><label><span>Expires</span><select onChange={(event) => setExpiryDays(event.target.value)} value={expiryDays}><option value="1">1 day</option><option value="7">7 days</option><option value="30">30 days</option><option value="never">Never</option></select></label></div>
             <button className="primary-button" disabled={busy === 'invite'} type="submit">{busy === 'invite' ? 'Generating…' : 'Generate invite'}</button>
           </form>
-          {createdInvite ? <div className="created-invite" aria-live="polite"><div><span>Copy this code now</span><code>{createdInvite.code}</code><small>For security, Filehaven stores only its hash.</small></div><button aria-label="Copy invite code" className="secondary-button" onClick={() => void copyCreatedCode()} type="button">{copied ? <><Check size={14} /> Copied</> : <><Clipboard size={14} /> Copy</>}</button></div> : null}
+          {createdInvite ? <div className="created-invite" aria-live="polite"><div><span>Copy this code now</span><code>{createdInvite.code}</code><small>For security, SabHaven stores only its hash.</small></div><button aria-label="Copy invite code" className="secondary-button" onClick={() => void copyCreatedCode()} type="button">{copied ? <><Check size={14} /> Copied</> : <><Clipboard size={14} /> Copy</>}</button></div> : null}
         </section>
       </div>
 
